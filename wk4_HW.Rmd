@@ -1,0 +1,252 @@
+---
+title: "Week_H/W"
+output: html_document
+date: "2024-10-25"
+---
+
+
+```{r}
+#libraries
+library(tidyverse)
+library(terra)
+library(sf)
+library(here)
+library(dplyr)
+library(countrycode)
+library(ggplot2)
+library(plotly)
+
+```
+
+```{r}
+#loading data and cleaning data
+World_Countries <- st_read("World_Countries_(Generalized)_9029012925078512962.geojson")
+
+inequality_data <- st_read("HDR23-24_Composite_indices_complete_time_series.csv",
+                          locale = locale(encoding = "latin1"),
+                           na = "n/a") 
+inequality_data2 <- inequality_data[-c(196:206), ]
+  
+
+
+#viewing data
+print(World_Countries)
+print(inequality_data2)
+```
+
+
+```{r}
+#changing ISO alpha-3 code to ISO alpha-2 code to join data
+
+unique(inequality_data2$iso3)
+
+# Converting to character
+ID_ISO <- as.character(inequality_data2$iso3)
+
+ID_ISO2 <- countrycode(ID_ISO,
+                       origin = "iso3c", 
+                       destination = "iso2c")
+ID_ISO2 <-  na.omit(ID_ISO2)
+
+print(ID_ISO2)
+               
+
+                     
+```
+
+
+```{r}
+#Join string list back inequality data columns
+
+#making the list a data frame
+ISO_2 <- as.data.frame(ID_ISO2)
+print(ISO_2)
+
+#joining new data frame to the inequality data frame
+inequality_data3 <- inequality_data2 %>%
+  mutate(iso2 = ISO_2$ID_ISO2) %>%
+  select(iso2, everything())
+print(inequality_data3)
+
+#confirming if it worked
+inequality_data2_names <- names(inequality_data3)
+print(inequality_data2_names)
+
+
+World_countries_names <- names(World_Countries)
+print(World_countries_names)
+```
+
+
+```{r}
+#selecting only needed columns from from both data sets
+
+#spatial data
+World_Countries_F <- World_Countries %>%
+  select(COUNTRY, ISO, geometry) %>%
+  rename(ISO2 = ISO)
+print(World_Countries_F)
+
+#inequality data
+Gender_inequality <- inequality_data3 %>%
+  select(iso2, gii_2010, gii_2019) %>%
+    rename(ISO2 = iso2)%>%
+    mutate(
+    gii_2010 = as.numeric(gii_2010),
+    gii_2019 = as.numeric(gii_2019)
+    )
+print(Gender_inequality)
+
+
+```
+
+
+```{r}
+
+#Creating difference column
+#2010 - 2019 because we are assuming inequality was higher in 2010.
+Gender_inequality2 <- Gender_inequality %>%
+  mutate(Difference = gii_2010 - gii_2019)
+
+
+#joining data and creating a difference column
+
+Joint_data <- inner_join(World_Countries_F, Gender_inequality2, by = "ISO2" ) 
+print(Joint_data)
+
+```
+
+
+```{r}
+#Visualizing
+plot(Joint_data)
+
+# give axis titles
+x <- list (title = "Inequality_Index")
+y <- list (title = "Frequency")
+
+# set the bin width
+xbinsno<-list(start=0, end=1, size = 0.1)
+
+# plot the histogram calling all the variables we just set
+ihist<-plot_ly(alpha = 0.6) %>%
+        add_histogram(x = Joint_data$gii_2010,
+        xbins=xbinsno, name="GII_2010") %>%
+        add_histogram(x = Joint_data$gii_2019,
+        xbins=xbinsno, name="GII_2019") %>% 
+        layout(barmode = "overlay", xaxis=x, yaxis=y)
+
+ihist
+
+```
+
+
+```{r}
+#For gii_2010
+
+# global inequality standard deviation
+sdglobal10 <- sd(Joint_data$gii_2010, na.rm=TRUE)
+sdglobal10
+
+# global inequality maximum 
+maxglobal10 <- max(Joint_data$gii_2010, na.rm=TRUE)
+maxglobal10
+
+# global inequality minimum 
+minglobal10 <- min(Joint_data$gii_2010, na.rm=TRUE)
+minglobal10
+
+# global inequality Interquartlie range
+IQRglobal10 <- IQR(Joint_data$gii_2010, na.rm=TRUE)
+IQRglobal10
+
+# global inequality mean
+meanglobal10 <- mean(Joint_data$gii_2010, na.rm=TRUE)
+meanglobal10 
+
+
+
+#creating a table
+Stats <- c("St_deviation", "Maxmimum", "Minimum", "Int_Quart_Range", "Mean")
+Value_2010 <- c(sdglobal10, maxglobal10, minglobal10, IQRglobal10, meanglobal10)
+
+Infostat_2010 <- data.frame(Stats,Value_2010)
+  
+  
+```
+
+
+```{r}
+#For gii_2019
+
+
+# global inequality standard deviation
+sdglobal19 <- sd(Joint_data$gii_2019, na.rm=TRUE)
+sdglobal19
+
+# global inequality maximum 
+maxglobal19 <- max(Joint_data$gii_2019, na.rm=TRUE)
+maxglobal19
+
+# global inequality minimum 
+minglobal19 <- min(Joint_data$gii_2019, na.rm=TRUE)
+minglobal19
+
+# global inequality Interquartlie range
+IQRglobal19 <- IQR(Joint_data$gii_2019, na.rm=TRUE)
+IQRglobal19
+
+# global inequality mean
+meanglobal19 <- mean(Joint_data$gii_2019, na.rm=TRUE)
+meanglobal19 
+
+#creating a table
+Stats <- c("St_deviation", "Maxmimum", "Minimum", "Int_Quart_Range", "Mean")
+Value_2019 <- c(sdglobal19, maxglobal19, minglobal19, IQRglobal19, meanglobal19)
+
+Infostat_2019 <- data.frame(Stats,Value_2019)
+
+
+```
+
+
+```{r}
+#For difference
+
+
+# global inequality standard deviation
+sdglobal_Dif <- sd(Joint_data$Difference, na.rm=TRUE)
+sdglobal_Dif
+
+# global inequality maximum 
+maxglobal_Dif <- max(Joint_data$Difference, na.rm=TRUE)
+maxglobal_Dif
+
+# global inequality minimum 
+minglobal_Dif <- min(Joint_data$Difference, na.rm=TRUE)
+minglobal_Dif
+
+# global inequality Interquartlie range
+IQRglobal_Dif <- IQR(Joint_data$Difference, na.rm=TRUE)
+IQRglobal_Dif
+
+# global inequality mean
+meanglobal_Dif <- mean(Joint_data$Difference, na.rm=TRUE)
+meanglobal_Dif 
+
+#creating a table
+Stats <- c("St_deviation", "Maxmimum", "Minimum", "Int_Quart_Range", "Mean")
+Value_Dif<- c(sdglobal_Dif, maxglobal_Dif, minglobal_Dif, IQRglobal_Dif, meanglobal_Dif)
+
+Infostat_Dif <- data.frame(Stats,Value_Dif)
+```
+
+
+```{r}
+Summary_Stats <- inner_join(Infostat_2019, Infostat_2010, by = "Stats" ) %>%
+  inner_join(Infostat_Dif, Summary_Stats, by = "Stats")
+print(Summary_Stats)
+
+
+```
+
