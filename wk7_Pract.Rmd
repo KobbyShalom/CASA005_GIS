@@ -1,0 +1,24 @@
+---
+title: "WEEK_7_PRACT"
+output: pdf_document
+date: "2024-11-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# LIBRARIES
+library(here)
+library(janitor)
+library(sf)
+library(tidyverse)
+
+```
+
+```{r}
+# LOADING DATA
+LondonWards <- st_read(here::here())
+```
+
